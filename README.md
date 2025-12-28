@@ -1,13 +1,19 @@
-# 🛡️ LLM Safety: Evaluation, Classification & Mitigation Framework
+# LLM Safety: Evaluation, Classification & Mitigation Framework
 
 This repository contains a **practical LLM safety experimentation framework** focused on **classification, red-teaming, and mitigation of unsafe model behavior**.  
 It explores multiple safety strategies using **API-based classifiers, open-source models, rule-based logic, and fine-tuned transformers**, along with pipelines for querying both hosted and local LLMs.
 
-The project emphasizes **hands-on safety evaluation**, experimentation, and honest reporting of limitations.
+classfier_chatgpt api calls gpt-40-mini to act as an classifier
+classfier_detoxify uses Detoxify and prints metric scores along with labels
+classifier_hybrird uses Detoxify+ Rule based override to further augument quality
+distilbert trains a distilbert on dataset and returns confusion matrix and other graphs
+load_openchat, load_prompts, define_query, query are pipline for local instance of openchat 
+response_openchat sends red-teaming prompts to a hosted openchat/openchat-3.5-1210 on Hugging Face and collects the model's responses
+mitigation.py is the mitigation script
 
 ---
 
-## 🎯 Project Objective
+## Project Objective
 
 Large Language Models can generate unsafe, biased, or policy-violating responses when exposed to adversarial or red-teaming prompts.  
 This project aims to:
@@ -20,7 +26,7 @@ This project aims to:
 
 ---
 
-## 🧠 System Overview
+## System Overview
 
 ```
 Red-Teaming Prompts
@@ -40,18 +46,18 @@ Post-Mitigation Analysis
 
 ---
 
-## 🧩 Core Components
+## Core Components
 
-### 🔹 1. ChatGPT-based Classifier
+### 1. ChatGPT-based Classifier
 **`classfier_chatgpt.py`**
 
-- Uses the **GPT-4o-mini API** as a zero-shot classifier
+- Uses the **GPT-4o-mini** API as a zero-shot classifier
 - Prompts the model to label responses as safe or unsafe
 - Acts as a strong semantic baseline for classification
 
 ---
 
-### 🔹 2. Detoxify-based Classifier
+### 2. Detoxify-based Classifier
 **`classifier_detoxify.py`**
 
 - Uses the **Detoxify** model for toxicity detection
@@ -62,7 +68,7 @@ Post-Mitigation Analysis
 
 ---
 
-### 🔹 3. Hybrid Classifier
+### 3. Hybrid Classifier
 **`classifier_hybrid.py`**
 
 - Combines **Detoxify predictions** with **rule-based overrides**
@@ -72,7 +78,7 @@ Post-Mitigation Analysis
 
 ---
 
-### 🔹 4. DistilBERT Training & Evaluation
+### 4. DistilBERT Training & Evaluation
 **`distilbert.py`**
 
 - Fine-tunes a **DistilBERT** model on labeled response data
@@ -81,11 +87,11 @@ Post-Mitigation Analysis
   - Accuracy / precision / recall metrics
   - Training and evaluation plots
 
-This component explores **learned safety classifiers** over heuristic ones.
+This component explores learned safety classifiers over heuristic ones.
 
 ---
 
-### 🔹 5. OpenChat Query Pipelines (Local & Hosted)
+### 5. OpenChat Query Pipelines (Local & Hosted)
 
 **Local pipeline**
 - `load_openchat.py`
@@ -93,7 +99,7 @@ This component explores **learned safety classifiers** over heuristic ones.
 - `define_query.py`
 - `query.py`
 
-Used to interact with a **locally hosted OpenChat model**.
+Used to interact with a locally hosted OpenChat model.
 
 **Hosted pipeline**
 - `response_openchat.py`
@@ -102,7 +108,7 @@ Sends red-teaming prompts to **OpenChat / OpenChat-3.5-1210 hosted on Hugging Fa
 
 ---
 
-### 🔹 6. Mitigation Engine
+### 6. Mitigation Engine
 **`mitigation.py`**
 
 - Applies mitigation strategies to unsafe prompts or responses
@@ -111,7 +117,7 @@ Sends red-teaming prompts to **OpenChat / OpenChat-3.5-1210 hosted on Hugging Fa
 
 ---
 
-## 📂 Repository Structure
+## Repository Structure
 
 ```
 llm-safety/
@@ -135,56 +141,39 @@ llm-safety/
 
 ---
 
-## 🚀 How to Use
+## How to Use
 
-### 1️⃣ Install dependencies
+### 1️. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2️⃣ Run safety classification
+### 2️. Run safety classification
 ```bash
 python classifier_hybrid.py
 ```
 
-### 3️⃣ Train DistilBERT classifier
+### 3️. Train DistilBERT classifier
 ```bash
 python distilbert.py
 ```
 
-### 4️⃣ Query OpenChat (hosted)
+### 4️. Query OpenChat (hosted)
 ```bash
 python response_openchat.py
 ```
 
-### 5️⃣ Apply mitigation
+### 5️. Apply mitigation
 ```bash
 python mitigation.py
 ```
 
 ---
 
-## ⚠️ Honest Limitation & Explanation
+## What This Project Demonstrates
 
-During development, responses for mitigation testing were **generated using Gemini** instead of reusing the existing labeled prompt-response dataset.
-
-As a result:
-- A **direct before/after quantitative comparison** of mitigation effectiveness is missing
-- Corresponding **comparison visualizations** could not be produced
-
-However:
-- The mitigation logic itself is correctly implemented
-- **Run examples demonstrating mitigation effectiveness** are included in the documentation
-- This limitation is **non-fundamental** and can be easily rectified by re-running mitigation on the existing dataset
-
-This is an acknowledged design mistake made under **time constraints**, not a conceptual flaw.
-
----
-
-## 🧠 What This Project Demonstrates
-
-- Practical understanding of **LLM safety challenges**
-- Experience with **multiple safety classifiers**
+- Practical understanding of LLM safety challenges
+- Experience with multiple safety classifiers
 - Comparison of rule-based vs learned approaches
 - Red-teaming and response analysis workflows
 - Awareness of experimental limitations and honest reporting
@@ -192,13 +181,7 @@ This is an acknowledged design mistake made under **time constraints**, not a co
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
-This project is an **experimental exploration of LLM safety techniques**.  
-It is **not a production-ready safety system**.
-
----
-
-## 📄 License
-
-MIT License
+This project is an experimental exploration of LLM safety techniques.  
+It is not a production-ready safety system.
