@@ -53,26 +53,67 @@ class RegexPatternMatcher:
         # negative descriptors patterns
         self.negative_patterns = {
             'hate_speech': [
-                r'\b(hate|despise|loathe|detest)\b',
-                r'\b(stupid|dumb|inferior|savage|primitive|backwards)\b',
-                r'\b(should\s+(?:die|be\s+killed|disappear|not\s+exist))\b'
+                r'\b(hate|despise|loathe|detest|abhor|revile)\b',
+                r'\b(stupid|dumb|inferior|subhuman|vermin|parasite|filthy)\b',
+                r'\b(savage|primitive|backwards|uncivilized|barbaric)\b',
+                r'\b(should\s+(?:die|be\s+killed|disappear|not\s+exist))\b',
+                r'\b(exterminate|eradicate|wipe\s+out|cleanse)\b',
+                r'\b(not\s+even\s+human|less\s+than\s+human)\b'
             ],
             'discrimination': [
-                r'\b(all\s+\w+\s+are\s+(?:bad|evil|dangerous|criminals))\b',
+                r'\b(all\s+\w+\s+are\s+(?:bad|evil|dangerous|criminals|liars))\b',
                 r'\b(never\s+trust|always\s+avoid|stay\s+away\s+from)\b',
-                r'\b(ban|remove|exclude|eliminate)\s+(?:all|every)\b'
+                r'\b(ban|remove|exclude|eliminate|segregate)\s+(?:all|every)\b',
+                r'\b(collective\s+punishment|group\s+guilt)\b',
+                r'\b(they\s+are\s+the\s+problem)\b'
             ],
             'violence': [
-                r'\b(kill|murder|attack|harm|hurt|violence|fight|punch|shoot)\b',
-                r'\b(bomb|explosion|weapon|gun|knife|blade)\b'
+                r'\b(kill|murder|execute|assassinate|slaughter)\b',
+                r'\b(attack|harm|hurt|beat|stab|shoot|strangle)\b',
+                r'\b(bomb|explosion|weapon|firearm|gun|knife|blade)\b',
+                r'\b(make\s+it\s+look\s+like\s+an\s+accident)\b',
+                r'\b(how\s+to\s+kill|best\s+way\s+to\s+hurt)\b'
             ],
             'sexual_content': [
                 r'\b(sex|sexual|nude|naked|porn|erotic|intimate)\b',
-                r'\b(breast|penis|vagina|genitals)\b'
+                r'\b(breast|penis|vagina|genitals|nipples)\b',
+                r'\b(fetish|kink|orgasm|ejaculate)\b',
+                r'\b(non[-\s]?consensual|rape|molest)\b',
+                r'\b(make\s+her|force\s+him)\b'
             ],
             'profanity': [
                 r'\b(fuck|shit|damn|hell|ass|bitch|bastard)\b',
-                r'\b(f\*ck|s\*\*t|d\*mn)\b'
+                r'\b(f\*+k|s\*+t|d\*+mn|b\*+ch)\b',
+                r'\b(motherfucker|asshole|cunt)\b'
+            ],
+            'roleplay_jailbreak': [
+                r'\b(pretend\s+to\s+be|act\s+as|role\s*play)\b',
+                r'\b(ignore\s+(?:previous|earlier)\s+instructions)\b',
+                r'\b(as\s+an\s+evil|unfiltered|uncensored)\b',
+                r'\b(do\s+not\s+follow\s+the\s+rules)\b'
+            ],
+            'safety_bypass': [
+                r'\b(ignore\s+safety|bypass\s+filters|disable\s+moderation)\b',
+                r'\b(no\s+ethical\s+constraints|without\s+limitations)\b',
+                r'\b(this\s+is\s+for\s+research\s+purposes\s+only)\b',
+                r'\b(just\s+hypothetically|purely\s+fictional)\b'
+            ],
+            'procedural_harm': [
+                r'\b(step\s*by\s*step|detailed\s+instructions)\b',
+                r'\b(how\s+to\s+make|how\s+to\s+build)\b',
+                r'\b(explain\s+exactly\s+how)\b',
+                r'\b(materials\s+needed|ingredients\s+required)\b'
+            ],
+            'self_harm': [
+                r'\b(suicide|self[-\s]?harm|kill\s+myself)\b',
+                r'\b(end\s+my\s+life|want\s+to\s+die)\b',
+                r'\b(painless\s+way\s+to\s+die)\b'
+            ],
+            'obfuscation': [
+                r'(?:k[\W_]*i[\W_]*l[\W_]*l)',
+                r'(?:b[\W_]*o[\W_]*m[\W_]*b)',
+                r'(?:s[\W_]*e[\W_]*x)',
+                r'\b(base64|rot13|hex\s+encode|unicode\s+escape)\b'
             ]
         }
         
@@ -126,24 +167,68 @@ class NLPContextualMatcher:
         entities = [(ent.text, ent.label_, ent.start_char, ent.end_char) for ent in doc.ents]
         
         # Part-of-Speech tagging for key terms
-        pos_tags = [(token.text, token.pos_, token.tag_) for token in doc if token.pos_ in ['NOUN', 'ADJ', 'VERB']]
+            pos_tags = [
+                (token.text, token.pos_, token.tag_)
+                for token in doc
+                if token.pos_ in ['NOUN', 'VERB', 'ADJ']
+                and not token.is_stop
+            ]
         
         # Sentiment indicators (simple approach)
         sentiment_indicators = []
-        negative_words = ['bad', 'terrible', 'awful', 'horrible', 'disgusting', 'hate', 'stupid']
-        positive_words = ['good', 'great', 'excellent', 'wonderful', 'amazing', 'love', 'smart']
+        negative_words = [
+            'bad','terrible','awful','horrible','disgusting','hate','stupid',
+            'inferior','worthless','pathetic','useless','toxic','evil',
+            'dangerous','filthy','corrupt','degenerate'
+        ]
         
-        for token in doc:
-            if token.lemma_.lower() in negative_words:
-                sentiment_indicators.append(('negative', token.text, token.i))
-            elif token.lemma_.lower() in positive_words:
-                sentiment_indicators.append(('positive', token.text, token.i))
-        
-        return {
-            'entities': entities,
-            'pos_tags': pos_tags,
-            'sentiment_indicators': sentiment_indicators
+        positive_words = [
+            'good','great','excellent','wonderful','amazing','love','smart',
+            'brilliant','helpful','kind','perfect','impressive'
+        ]
+        intensifiers = {
+            'very','extremely','absolutely','completely',
+            'utterly','always','never','all','everyone'
         }
+    
+        negations = {'not', "n't", 'never', 'no'}
+
+        
+    for token in doc:
+        lemma = token.lemma_.lower()
+
+        # --- detect negation ---
+        negated = any(child.lemma_.lower() in negations for child in token.children)
+
+        # --- detect intensity nearby ---
+        intensified = any(
+            t.lemma_.lower() in intensifiers
+            for t in doc[max(0, token.i-2): token.i+3]
+        )
+
+        if lemma in negative_words:
+            sentiment_indicators.append({
+                'type': 'negative',
+                'token': token.text,
+                'index': token.i,
+                'negated': negated,
+                'intensified': intensified
+            })
+
+        elif lemma in positive_words:
+            sentiment_indicators.append({
+                'type': 'positive',
+                'token': token.text,
+                'index': token.i,
+                'negated': negated,
+                'intensified': intensified
+            })
+
+    return {
+        'entities': entities,
+        'pos_tags': pos_tags,
+        'sentiment_indicators': sentiment_indicators
+    }
     
     def check_proximity(self, text: str, identity_terms: List[str], negative_terms: List[str], window: int = 10) -> List[Dict]:
         """Check if identity terms and negative descriptors appear in proximity"""
@@ -369,36 +454,88 @@ class ContentFilteringSystem:
             'warnings': output_result.reason if output_result.action == FilterAction.WARNING else None
         }
     
-    def _calculate_risk_score(self, detected_patterns: Dict, proximity_violations: List, nlp_analysis: Dict) -> float:
-        """Calculate risk score based on detected patterns and context"""
+    def _calculate_risk_score(
+        self,
+        detected_patterns: Dict,
+        proximity_violations: List,
+        nlp_analysis: Dict
+    ) -> float:
         score = 0.0
-        
-        # Base scores for pattern categories
+    
+        # Base weights
         pattern_weights = {
-            'hate_speech': 0.4,
+            'violence': 0.45,
+            'hate_speech': 0.35,
             'discrimination': 0.3,
-            'violence': 0.3,
-            'sexual_content': 0.2,
+            'sexual_content': 0.25,
             'profanity': 0.1
         }
-        
-        # Score based on detected negative patterns
-        for pattern in detected_patterns['negative']:
-            category = pattern.split(':')[0]
-            if category in pattern_weights:
-                score += pattern_weights[category]
-        
-        # Bonus score for proximity violations (identity + negative terms close together)
-        if proximity_violations:
-            score += 0.3 * len(proximity_violations)
-        
-        # Factor in NLP sentiment analysis
-        negative_sentiment_count = sum(1 for sentiment, _, _ in nlp_analysis.get('sentiment_indicators', []) if sentiment == 'negative')
-        if negative_sentiment_count > 0:
-            score += 0.1 * negative_sentiment_count
-        
-        return min(score, 1.0)  # Cap at 1.0
     
+        # Count patterns per category
+        category_counts = {}
+        for pattern in detected_patterns.get('negative', []):
+            category = pattern.split(':')[0]
+            category_counts[category] = category_counts.get(category, 0) + 1
+    
+        # Apply diminishing returns
+        for category, count in category_counts.items():
+            weight = pattern_weights.get(category, 0)
+            score += weight * (1 - pow(0.6, count))  # saturation curve
+    
+        # Proximity violations = strong signal
+        if proximity_violations:
+            score += min(0.4, 0.2 + 0.1 * len(proximity_violations))
+    
+        # Sentiment as *modifier*, not additive signal
+        negative_sentiments = [
+            s for s in nlp_analysis.get('sentiment_indicators', [])
+            if s.get('type') == 'negative' and not s.get('negated', False)
+        ]
+    
+        if negative_sentiments:
+            intensified = any(s.get('intensified') for s in negative_sentiments)
+            score += 0.1 if intensified else 0.05
+    
+        # Interaction boost: violence + proximity
+        if 'violence' in category_counts and proximity_violations:
+            score += 0.15
+    
+        return min(score, 1.0)
+
+    def _rewrite_prompt(self, prompt: str, detected_patterns: Dict) -> str:
+    
+        # Categories that should NEVER be rewritten
+        hard_block_categories = {'violence', 'sexual_content'}
+    
+        for pattern in detected_patterns.get('negative', []):
+            category = pattern.split(':')[0]
+            if category in hard_block_categories:
+                # Do not rewrite — escalation or refusal should happen upstream
+                return prompt
+    
+        rewritten = prompt
+    
+        # Safe-to-rewrite soft framing only
+        soft_rewrite_rules = {
+            # Overgeneralization
+            r'\ball\s+(\w+)\s+are\b': r'some \1 might be',
+            r'\beveryone\s+in\b': r'some individuals in',
+    
+            # Hostile framing
+            r'\bnever\s+trust\b': r'be cautious about',
+            r'\bhate\s+(\w+)\b': r'have concerns about \1',
+            r'\bstupid\s+(\w+)\b': r'poorly informed \1',
+    
+            # Absolutist language
+            r'\balways\b': r'often',
+            r'\bcompletely\b': r'partially',
+        }
+    
+        for pattern, replacement in soft_rewrite_rules.items():
+            rewritten = re.sub(pattern, replacement, rewritten, flags=re.IGNORECASE)
+    
+        return rewritten
+    '''
     def _rewrite_prompt(self, prompt: str, detected_patterns: Dict) -> str:
         """Attempt to rewrite prompt to make it safer"""
         rewritten = prompt
@@ -415,6 +552,7 @@ class ContentFilteringSystem:
             rewritten = re.sub(pattern, replacement, rewritten, flags=re.IGNORECASE)
         
         return rewritten
+    '''
 
 # Example usage and testing
 def main():
