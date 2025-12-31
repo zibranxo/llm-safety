@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import torch
+import random
 from torch.utils.data import Dataset, DataLoader
 from transformers import (
     DistilBertTokenizer, 
@@ -10,12 +11,33 @@ from transformers import (
     EarlyStoppingCallback
 )
 from sklearn.model_selection import train_test_split
+from torch.nn import CrossEntropyLoss
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
 import warnings
 warnings.filterwarnings('ignore')
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+set_seed(42)
+
+class WeightedTrainer(Trainer):
+    def __init__(self, *args, class_weights=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.class_weights = class_weights
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+        logits = outputs.logits
+        loss_fct = CrossEntropyLoss(weight=self.class_weights.to(logits.device))
+        loss = loss_fct(logits, labels)
+        return (loss, outputs) if return_outputs else loss
 
 class ResponseDataset(Dataset):
     """Custom dataset for response classification"""
@@ -37,7 +59,7 @@ class ResponseDataset(Dataset):
         encoding = self.tokenizer(
             text,
             truncation=True,
-            padding='max_length',
+            padding=True,
             max_length=self.max_length,
             return_tensors='pt'
         )
@@ -110,11 +132,10 @@ class UnsafeResponseClassifier:
                 raise ValueError("CSV must contain 'response' and 'label' columns")
                 
         except Exception as e:
-            print(f"Error loading data: {e}")
-            # Return sample data for testing
-            print("Using sample data for demonstration...")
-            return self._get_sample_data()
-    
+            raise RuntimeError(
+                f"Failed to load dataset properly: {e}"
+            )
+    '''
     def _get_sample_data(self):
         """Generate sample data for testing"""
         texts = [
@@ -134,7 +155,7 @@ class UnsafeResponseClassifier:
         self.reverse_label_mapping = {0: 'safe', 1: 'biased', 2: 'unsafe'}
         
         return texts, labels
-    
+    '''
     def prepare_datasets(self, texts, labels, test_size=0.2, val_size=0.1):
         """Split data and create datasets"""
         print("Preparing datasets...")
@@ -228,7 +249,7 @@ class UnsafeResponseClassifier:
             num_train_epochs=num_epochs,
             per_device_train_batch_size=batch_size,
             per_device_eval_batch_size=batch_size,
-            warmup_steps=500,
+            warmup_ratio=0.1,
             weight_decay=0.01,
             logging_dir='./logs',
             logging_steps=10,
@@ -240,14 +261,26 @@ class UnsafeResponseClassifier:
             metric_for_best_model='f1',
             greater_is_better=True,
         )
+        from sklearn.utils.class_weight import compute_class_weight
         
-        self.trainer = Trainer(
+        class_weights = compute_class_weight(
+            class_weight='balanced',
+            classes=np.array([0, 1, 2]),
+            y=train_dataset.labels
+        )
+        
+        class_weights = torch.tensor(class_weights, dtype=torch.float)
+        print("Class weights:", class_weights.tolist())
+
+                  
+        self.trainer = WeightedTrainer(
             model=self.model,
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=val_dataset,
             compute_metrics=self.compute_metrics,
-            callbacks=[EarlyStoppingCallback(early_stopping_patience=2)]
+            callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],
+            class_weights=class_weights
         )
         
         # Train the model
@@ -284,7 +317,7 @@ class UnsafeResponseClassifier:
                                   target_names=['Safe', 'Biased', 'Unsafe']))
         
         return results
-    
+ 
     def plot_confusion_matrix(self, y_true, y_pred):
         """Plot confusion matrix"""
         cm = confusion_matrix(y_true, y_pred)
@@ -414,18 +447,28 @@ class UnsafeResponseClassifier:
         confidence_scores = np.max(predictions, axis=1)
         
         results = []
+        CONFIDENCE_THRESHOLD = 0.6  #tunable
+        
         for i, text in enumerate(formatted_texts):
-            class_name = self.reverse_label_mapping[predicted_classes[i]]
+            confidence = confidence_scores[i]
+            class_idx = predicted_classes[i]
+            class_name = self.reverse_label_mapping[class_idx]
+
+            if confidence < CONFIDENCE_THRESHOLD:
+                class_name = "borderline" #borderline is a confidence-based post-processing label, not a trained class in the model.
+
+        
             results.append({
                 'text': text,
                 'predicted_class': class_name,
-                'confidence': confidence_scores[i],
+                'confidence': confidence,
                 'probabilities': {
-                    'safe': predictions[i][0],
-                    'biased': predictions[i][1],
-                    'unsafe': predictions[i][2]
+                    'safe': float(predictions[i][0]),
+                    'biased': float(predictions[i][1]),
+                    'unsafe': float(predictions[i][2])
                 }
             })
+
         
         return results
     
