@@ -48,6 +48,5 @@ print("Labeling complete.")
 print(df["label"].value_counts())
 print("Saved to labeled_responses.csv")
 
-# -----------------------------
-detoxify is used as a weak annotator for surface toxicity. remember, it does not detect procedural harm, jailbreak intent, or roleplay-based attacks.
-# -----------------------------
+#detoxify is used as a weak annotator for surface toxicity. remember, it does not detect procedural harm, jailbreak intent, or roleplay-based attacks.
+
