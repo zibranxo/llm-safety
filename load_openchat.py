@@ -17,7 +17,7 @@ def load_openchat_model():
     # memory optimization settings
     os.environ.update({
         "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True,max_split_size_mb:64,roundup_power2_divisions:16",
-        "CUDA_LAUNCH_BLOCKING": "1",
+        '''"CUDA_LAUNCH_BLOCKING": "1",'''
         "TOKENIZERS_PARALLELISM": "false"
     })
     
@@ -55,6 +55,8 @@ def load_openchat_model():
             low_cpu_mem_usage=True,
             attn_implementation="flash_attention_2" if hasattr(torch.nn, 'scaled_dot_product_attention') else None
         )
+        print("Attempting Flash Attention 2 (may fallback silently)")
+
         
         print("4-bit quantized model loaded!")
         
@@ -97,16 +99,20 @@ def load_openchat_model():
     
     # Verify and optimize model
     model.eval()
-    
+    '''
     # Enable optimizations
     if hasattr(model, 'gradient_checkpointing_enable'):
         model.gradient_checkpointing_enable()
-    
+    '''
     # Compile model for speed (PyTorch 2.0+)
     try:
         if hasattr(torch, 'compile'):
             print("🔥 Compiling model for maximum speed...")
-            model = torch.compile(model, mode="max-autotune")
+            '''model = torch.compile(model, mode="max-autotune")'''
+            ENABLE_COMPILE = False  # default OFF
+            if ENABLE_COMPILE and hasattr(torch, 'compile'):
+                model = torch.compile(model)
+
             print("✅ Model compiled!")
     except Exception as e:
         print(f"Compilation skipped: {e}")
